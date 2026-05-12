@@ -641,6 +641,33 @@ This app does not need to beat competitors on breadth. It wins by targeting a di
 
 ---
 
+## PRD Completion Contract
+
+This build is not complete until the implementation covers the whole PRD, not just a scaffold or a single happy path.
+
+Before coding:
+
+1. Read the PRD end-to-end.
+2. Create `FORGE_PRD_TASKS.md`.
+3. Break the PRD into an explicit checklist covering data model, auth, every user-facing page, every API/server action, every core workflow, billing/email/storage integrations or safe fallbacks, marketing/SEO pages, Docker/deploy config, and verification.
+
+During coding:
+
+1. Implement the checklist in dependency order: foundation -> data/auth -> core workflows -> secondary workflows -> marketing/pages -> deployment -> QA.
+2. After each major phase, re-read the relevant PRD sections and update `FORGE_PRD_TASKS.md`.
+3. Use realistic local/mock/safe-fallback implementations when external credentials are unavailable.
+4. Do not leave placeholder pages, TODO-only routes, fake buttons, or unimplemented workflows.
+
+Before finishing:
+
+1. Run `npm run build` and fix all failures.
+2. Start the dev server and smoke-test primary routes.
+3. Create `FORGE_COMPLETION_AUDIT.md` mapping every major PRD requirement to concrete files/routes/components/actions that implement it.
+4. List any truly external credential requirements in `HUMAN_INPUT_NEEDED.md`, but only after implementing guarded code paths and safe fallbacks.
+5. Output `FORGE_BUILD_COMPLETE` only after the task ledger and audit exist.
+
+---
+
 ## Dockerfile
 
 ```dockerfile
@@ -687,7 +714,13 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000
-CMD ["node", "server.js"]
+# Bind Next.js to all interfaces. Docker auto-injects HOSTNAME=<container-id>
+# into the process env, which Next.js standalone reads and binds to that single
+# IPv6 address — making the app unreachable from Traefik. Set HOSTNAME both as
+# ENV (Config.Env) and inline in CMD (process env) so neither layer wins for the
+# wrong reason.
+ENV HOSTNAME=0.0.0.0
+CMD ["sh", "-c", "HOSTNAME=0.0.0.0 exec node server.js"]
 
 # ============================================================
 # WITH PRISMA/SQLITE — replace the above Dockerfile entirely
@@ -733,7 +766,9 @@ CMD ["node", "server.js"]
 # USER nextjs
 # EXPOSE 3000
 # ENV PORT=3000
-# CMD ["sh", "-c", "node node_modules/prisma/build/index.js db push --skip-generate && echo 'DB schema initialized' && node server.js"]
+# # Bind Next.js to all interfaces — see HOSTNAME comment in the simple template above.
+# ENV HOSTNAME=0.0.0.0
+# CMD ["sh", "-c", "node node_modules/prisma/build/index.js db push --skip-generate && echo 'DB schema initialized' && HOSTNAME=0.0.0.0 exec node server.js"]
 ```
 
 ---
