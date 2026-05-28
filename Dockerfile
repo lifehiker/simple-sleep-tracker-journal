@@ -24,6 +24,11 @@ WORKDIR /app
 ENV NODE_ENV=production
 # Default AUTH_SECRET — app works with no Coolify env vars; override for production
 ENV AUTH_SECRET="forge-app-default-secret-override-in-production"
+# Auth.js / NextAuth v5 refuses to serve when behind a proxy unless this is set
+# (errors.authjs.dev#untrustedhost). Coolify is always proxied, so this is
+# always correct for Forge-deployed apps. Without it, every request to an
+# auth-using app returns 502 and the deploy verifier flags the app dead.
+ENV AUTH_TRUST_HOST=1
 ENV NEXT_PUBLIC_APP_URL=""
 
 RUN addgroup --system --gid 1001 nodejs
